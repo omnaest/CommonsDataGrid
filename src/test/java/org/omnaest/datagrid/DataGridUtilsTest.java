@@ -20,7 +20,7 @@ public class DataGridUtilsTest
     {
         try (DataGrid dataGrid = DataGridUtils.newLocalInstance())
         {
-            IndexElementRepository<Map> repository = dataGrid.newRepository(Map.class);
+            IndexElementRepository<Map> repository = dataGrid.newIndexRepository("test", Map.class);
 
             Long id1 = repository.add(MapUtils.builder()
                                               .put("key1", "value1")

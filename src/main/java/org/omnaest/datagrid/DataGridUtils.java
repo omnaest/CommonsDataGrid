@@ -1,6 +1,6 @@
 package org.omnaest.datagrid;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 import org.apache.ignite.Ignite;
@@ -15,7 +15,7 @@ public class DataGridUtils
 {
     public static interface DataGrid extends AutoCloseable
     {
-        public <D> IndexElementRepository<D> newRepository(Class<D> type);
+        public <D> IndexElementRepository<D> newIndexRepository(String name, Class<D> type);
     }
 
     public static DataGrid newLocalInstance()
@@ -25,19 +25,17 @@ public class DataGridUtils
         return new DataGrid()
         {
             @Override
-            public <D> IndexElementRepository<D> newRepository(Class<D> type)
+            public <D> IndexElementRepository<D> newIndexRepository(String name, Class<D> type)
             {
-                // Create an IgniteCache and put some values in it.
-                IgniteCache<Integer, String> cache = ignite.getOrCreateCache("myCache");
-
+                IgniteCache<Long, String> cache = ignite.getOrCreateCache(name);
                 return new IndexElementRepository<D>()
                 {
-                    private AtomicInteger idCounter = new AtomicInteger();
+                    private AtomicLong idCounter = new AtomicLong();
 
                     @Override
                     public Long add(D element)
                     {
-                        int id = this.idCounter.getAndIncrement();
+                        long id = this.idCounter.getAndIncrement();
                         cache.put(id, JSONHelper.prettyPrint(element));
                         return (long) id;
                     }
@@ -45,19 +43,19 @@ public class DataGridUtils
                     @Override
                     public void put(Long id, D element)
                     {
-                        cache.put(id.intValue(), JSONHelper.prettyPrint(element));
+                        cache.put(id, JSONHelper.prettyPrint(element));
                     }
 
                     @Override
                     public void remove(Long id)
                     {
-                        cache.remove(id.intValue());
+                        cache.remove(id);
                     }
 
                     @Override
                     public D get(Long id)
                     {
-                        return JSONHelper.readFromString(cache.get(id.intValue()), type);
+                        return JSONHelper.readFromString(cache.get(id), type);
                     }
 
                     @Override
