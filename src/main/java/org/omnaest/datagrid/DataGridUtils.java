@@ -1,5 +1,6 @@
 package org.omnaest.datagrid;
 
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -20,6 +21,8 @@ import org.omnaest.utils.EnumUtils;
 import org.omnaest.utils.JSONHelper;
 import org.omnaest.utils.JSONHelper.JsonStringConverter;
 import org.omnaest.utils.StreamUtils;
+import org.omnaest.utils.StringUtils;
+import org.omnaest.utils.StringUtils.StringEncoderAndDecoder;
 import org.omnaest.utils.optional.NullOptional;
 import org.omnaest.utils.repository.CoreElementRepository;
 import org.omnaest.utils.repository.ElementRepository;
@@ -31,7 +34,9 @@ public class DataGridUtils
 {
     public static interface DataGrid extends AutoCloseable
     {
-        public <D> IndexElementRepository<D> newIndexRepository(String name, Class<D> type, Class<?>... genericParameterTypes);
+        public <D> IndexElementRepository<D> newIndexRepository(String name, Class<? super D> type, Class<?>... genericParameterTypes);
+
+        public <D> IndexElementRepository<D> newIndexRepository(List<String> name, Class<? super D> type, Class<?>... genericParameterTypes);
 
         public <I, D> ElementRepository<I, D> newRepository(String name, Function<Long, I> idSupplier, Class<D> type, Class<?>... genericParameterTypes);
     }
@@ -89,12 +94,22 @@ public class DataGridUtils
         ignite.cluster()
               .active(true);
 
+        StringEncoderAndDecoder nameEncoderAndDecoder = StringUtils.encoder()
+                                                                   .with(f -> f.forAlphaNumericText());
+
         return new DataGrid()
         {
             @Override
-            public <D> IndexElementRepository<D> newIndexRepository(String name, Class<D> type, Class<?>... genericParameterTypes)
+            public <D> IndexElementRepository<D> newIndexRepository(List<String> name, Class<? super D> type, Class<?>... genericParameterTypes)
             {
-                return IndexElementRepository.of(this.newRepository(name, (id) -> id, type, genericParameterTypes));
+                return this.newIndexRepository(nameEncoderAndDecoder.encodeList(name, "."), type, genericParameterTypes);
+            }
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <D> IndexElementRepository<D> newIndexRepository(String name, Class<? super D> type, Class<?>... genericParameterTypes)
+            {
+                return (IndexElementRepository<D>) IndexElementRepository.of(this.newRepository(name, (id) -> id, type, genericParameterTypes));
             }
 
             @Override
